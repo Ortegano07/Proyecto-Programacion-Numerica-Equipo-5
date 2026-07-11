@@ -1,10 +1,12 @@
+# Proyecto-Programacion-Numerica-Equipo-5
+
 # Sistema de Soluciones Numéricas — Equipo 5
 
 Este proyecto consiste en una plataforma gráfica interactiva desarrollada en **Python** utilizando **Streamlit** y **Plotly**, diseñada para resolver, modelar y visualizar de forma analítica problemas de cálculo de raíces, sistemas de ecuaciones lineales, interpolación e integración numérica.
 
 ---
 
-## Guía de Ejecución Paso a Paso (Para el Evaluador)
+## Guía de Ejecución Paso a Paso
 
 Siga estas instrucciones detalladas en su terminal de comandos para desplegar el sistema de forma local:
 
@@ -13,15 +15,14 @@ Siga estas instrucciones detalladas en su terminal de comandos para desplegar el
 
 ### Paso 2: Navegar a la raíz del directorio
 *   Abra su terminal (Consola, PowerShell o CMD) y ubíquese dentro de la carpeta principal del proyecto ejecutando:
-    ```bash
+    
     cd "Ruta/De/La/Carpeta/Proyecto"
-    ```
 
 ### Paso 3: Instalar los requerimientos del entorno
 *   Instale las librerías del stack tecnológico ejecutando el siguiente comando (se requiere Python 3.9 o superior instalado):
-    ```bash
+    
     pip install -r requirements.txt
-    ```
+    
     *(Este paso configurará de forma automatizada `streamlit`, `plotly`, `numpy` y `sympy`)*.
 
 ### Paso 4: Levantar el servidor de la aplicación
@@ -36,7 +37,7 @@ Siga estas instrucciones detalladas en su terminal de comandos para desplegar el
 
 ---
 
-## 🎨 Características de la Interfaz y Flujo de Trabajo
+## Características de la Interfaz y Flujo de Trabajo
 
 *   **Navegación por Pestañas:** Organización modular en una sola pantalla para conmutar rápidamente entre los tres bloques principales de la materia.
 *   **Parámetros Globales:** Configuración unificada de criterios de parada (tolerancia de error e iteraciones máximas) desde la barra lateral.
@@ -44,7 +45,7 @@ Siga estas instrucciones detalladas en su terminal de comandos para desplegar el
 
 ---
 
-## 🛠️ Estructura del Repositorio
+## Estructura del Repositorio
 
 *   `main.py`: Archivo principal que gestiona la interfaz gráfica, los estilos visuales y la integración de los módulos.
 *   `requirements.txt`: Archivo de configuración con las dependencias del sistema.
@@ -57,9 +58,9 @@ Siga estas instrucciones detalladas en su terminal de comandos para desplegar el
 
 ---
 
-## 👥 Integrantes del Equipo y Roles de Desarrollo
+## Integrantes del Equipo y Roles de Desarrollo
 *   *Adrian Ortegano* (Desarrollador 1 - Integración, Arquitectura y UI)
-*   *Ana * (Desarrollador 2 - Algoritmos de Cálculo de Raíces)
+*   *Ana Sanchez* (Desarrollador 2 - Algoritmos de Cálculo de Raíces)
 *   *Manuel Fuentes* (Desarrollador 3 - Algoritmos de Sistemas Lineales)
 *   *Miguel Blanco* (Desarrollador 4 - Algoritmos de Interpolación e Integración)
 *   *Carlos Flores* (Desarrollador 5 - Visualización Gráfica Interactiva con Plotly)
