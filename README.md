@@ -6,7 +6,7 @@ Este proyecto consiste en una plataforma gráfica interactiva desarrollada en **
 
 ---
 
-## Guía de Ejecución Paso a Paso (Para el Evaluador)
+## Guía de Ejecución Paso a Paso
 
 Siga estas instrucciones detalladas en su terminal de comandos para desplegar el sistema de forma local:
 
