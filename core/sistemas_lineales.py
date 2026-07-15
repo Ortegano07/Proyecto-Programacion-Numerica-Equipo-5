@@ -65,7 +65,7 @@ def Gauss_pivoteo(A, b):
     
     return np.round(x, 3)
 
-def Gauss_seidel(A, b, tol=5.0, max_iter=50, verbose=True):
+def Gauss_seidel(A, b, tol=5.0, max_iter=150, verbose=True):
     A = np.array(A, dtype=float)
     b = np.array(b, dtype=float)
     
