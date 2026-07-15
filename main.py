@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Importación de los módulos desarrollados por tu equipo
 from core.raices import metodo_Newton, metodo_biseccion, metodo_secante
@@ -11,6 +12,7 @@ from core.interpolaciones_integracion import (
     trapecio_compuesto
 )
 from core.sistemas_lineales import Gauss_pivoteo, Gauss_seidel
+from utils.graficador import graficar_biseccion, graficar_newton_secante, graficar_comparacion_errores, graficar_interpolacion, graficar_integracion, graficar_sistema_lineal, graficar_convergencia_seidel, graficar_comparativa_sistemas
 
 # Configuración de página premium
 st.set_page_config(
@@ -62,6 +64,8 @@ global_max_iter = st.sidebar.number_input(
     value=150, 
     step=1
 )
+
+mostrar_graficas = st.sidebar.checkbox("📈 Mostrar gráficas", value=True)
 
 st.sidebar.markdown("---")
 st.sidebar.info("💡 Consejo: Los módulos matemáticos en `core/` procesarán automáticamente los datos según las variables ingresadas.")
@@ -152,6 +156,43 @@ with tab1:
                         'dfx': '{:.6e}', # Solo Newton lo incluye
                         'error': '{:.6f}'
                     }), use_container_width=True)
+                    
+                    if mostrar_graficas and len(historial) > 1:
+                        st.write("### 📈 Evolución del Error")
+                        errores = [d['error'] for d in historial[1:]]
+                        iteraciones = list(range(2, len(historial) + 1))
+                        fig_error = graficar_comparacion_errores(errores, iteraciones, metodo, "Evolución del Error")
+                        st.pyplot(fig_error)
+                        plt.close(fig_error)
+                    
+                    
+                    if mostrar_graficas:
+                        st.write("### 📊 Visualización del Método")
+                        
+                        # Crear función para graficar
+                        def f_grafica(x):
+                            return eval(funcion_str, {"x": x, "np": np, "sin": np.sin, "cos": np.cos, 
+                                                     "tan": np.tan, "sqrt": np.sqrt, "exp": np.exp, 
+                                                     "log": np.log, "pi": np.pi})
+                        
+                        # Preparar datos para la gráfica
+                        iterados_puntos = [(d['x'], d['fx']) for d in historial]
+                        
+                        if metodo == "Bisección":
+                            fig = graficar_biseccion(
+                                f_grafica, param_a, param_b, iterados_puntos, 
+                                raiz, global_tol, global_max_iter
+                            )
+                        else:
+                            # Newton o Secante
+                            dominio = (min(param_a, param_b, raiz) - 1, max(param_a, param_b, raiz) + 1)
+                            fig = graficar_newton_secante(
+                                f_grafica, dominio, iterados_puntos, 
+                                raiz, metodo.replace("-Raphson", ""), global_tol, global_max_iter
+                            )
+                        
+                        st.pyplot(fig)
+                        plt.close(fig)
             else:
                 st.error(f"**Error en la ejecución:** {mensaje}")
         else:
@@ -171,6 +212,11 @@ with tab2:
         
         # Selección del tamaño del sistema (N x N)
         n_dim = st.number_input("Dimensión del sistema (N):", min_value=2, max_value=5, value=3, step=1)
+        
+        tipo_visualizacion = st.selectbox(
+            "Tipo de visualización:",
+            ["Geométrica (rectas/planos)", "Mapa de calor", "Ambas"]
+        )
         
         st.write("**Ingrese los coeficientes de la Matriz A:**")
         # Generar inputs dinámicos en cuadrícula para la matriz A
@@ -209,36 +255,132 @@ with tab2:
             
             with st.spinner("Procesando matriz..."):
                 try:
-                    if metodo_sistema == "Gauss con Pivoteo":
-                        # El método original imprime mucho en terminal, capturamos su salida
-                        solucion = Gauss_pivoteo(A_np, b_np)
+                    # Diccionario para almacenar resultados
+                    resultados = {}
+                    historial_seidel = []
+                    
+                    # === GAUSS CON PIVOTEO ===
+                    if metodo_sistema in ["Gauss con Pivoteo", "Ambos (comparativa)"]:
+                        st.write("### 📐 Gauss con Pivoteo")
+                        sol_gauss = Gauss_pivoteo(A_np, b_np)
                         
-                        st.success("✅ **Sistema resuelto con éxito (Método Directo)**")
-                        st.write("### Vector Solución $x$:")
-                        for idx, x_val in enumerate(solucion):
-                            st.metric(label=f"Variable x{idx+1}", value=f"{x_val:.4f}")
+                        st.success("✅ **Sistema resuelto con éxito**")
+                        st.write("**Vector Solución:**")
+                        sol_df = pd.DataFrame({
+                            'Variable': [f'x{i+1}' for i in range(len(sol_gauss))],
+                            'Valor': sol_gauss
+                        })
+                        st.dataframe(sol_df, use_container_width=True)
+                        
+                        resultados['Gauss'] = {'solucion': sol_gauss, 'iteraciones': 1}
+                        
+                        # Gráfica del sistema
+                        if mostrar_graficas and n_dim in [2, 3]:
+                            st.write("**Visualización Geométrica:**")
+                            if tipo_visualizacion in ["Geométrica (rectas/planos)", "Ambas"]:
+                                fig_gauss = graficar_sistema_lineal(
+                                    A_np, b_np, sol_gauss, 
+                                    f"Gauss con Pivoteo", n_dim
+                                )
+                                st.pyplot(fig_gauss)
+                                plt.close(fig_gauss)
                             
-                    elif metodo_sistema == "Gauss-Seidel":
-                        # Llamamos al algoritmo con los parámetros globales de la barra lateral
-                        solucion, convergio, iters = Gauss_seidel(
-                            A_np, b_np, tol=global_tol, max_iter=global_max_iter, verbose=False
+                            if tipo_visualizacion in ["Mapa de calor", "Ambas"] and n_dim >= 3:
+                                st.write("**Mapa de calor de la Matriz:**")
+                                fig_heat = graficar_sistema_lineal(
+                                    A_np, b_np, sol_gauss, 
+                                    f"Gauss con Pivoteo (Heatmap)", n_dim
+                                )
+                                st.pyplot(fig_heat)
+                                plt.close(fig_heat)
+                    
+                    # === GAUSS-SEIDEL ===
+                    if metodo_sistema in ["Gauss-Seidel", "Ambos (comparativa)"]:
+                        st.write("### 🔄 Gauss-Seidel")
+                        
+                        # Ejecutar Gauss-Seidel guardando historial
+                        def gauss_seidel_con_historial(A, b, tol, max_iter):
+                            A = np.array(A, dtype=float)
+                            b = np.array(b, dtype=float)
+                            n = len(A)
+                            x = np.zeros(n)
+                            historial = []
+                            
+                            for k in range(max_iter):
+                                x_anterior = x.copy()
+                                for i in range(n):
+                                    suma1 = np.dot(A[i, :i], x[:i])
+                                    suma2 = np.dot(A[i, i+1:], x_anterior[i+1:])
+                                    x[i] = (b[i] - suma1 - suma2) / A[i, i]
+                                
+                                historial.append(x.copy())
+                                
+                                denominador = np.where(np.abs(x) > 1e-12, np.abs(x), 1.0)
+                                error_relativo = np.max(np.abs((x - x_anterior) / denominador)) * 100.0
+                                
+                                if error_relativo < tol:
+                                    return x, True, k + 1, historial
+                            
+                            return x, False, max_iter, historial
+                        
+                        sol_seidel, convergio, iter_seidel, historial_seidel = gauss_seidel_con_historial(
+                            A_np, b_np, global_tol, global_max_iter
                         )
                         
                         if convergio:
-                            st.success(f"🎉 **¡Convergió con éxito en {iters} iteraciones!**")
+                            st.success(f"🎉 **¡Convergió con éxito en {iter_seidel} iteraciones!**")
                         else:
-                            st.warning(f"⚠️ **El método no convergió después de {iters} iteraciones o divergió.**")
-                            
-                        st.write("### Vector Solución $x$:")
-                        for idx, x_val in enumerate(solucion):
-                            st.metric(label=f"Variable x{idx+1}", value=f"{x_val:.6f}")
+                            st.warning(f"⚠️ **El método no convergió después de {iter_seidel} iteraciones.**")
+                        
+                        st.write("**Vector Solución:**")
+                        sol_df = pd.DataFrame({
+                            'Variable': [f'x{i+1}' for i in range(len(sol_seidel))],
+                            'Valor': sol_seidel
+                        })
+                        st.dataframe(sol_df, use_container_width=True)
+                        
+                        resultados['Gauss-Seidel'] = {'solucion': sol_seidel, 'iteraciones': iter_seidel}
+                        
+                        # Gráfica de convergencia
+                        if mostrar_graficas and historial_seidel:
+                            st.write("**📈 Evolución de las variables:**")
+                            fig_conv = graficar_convergencia_seidel(historial_seidel, "Gauss-Seidel")
+                            if fig_conv:
+                                st.pyplot(fig_conv)
+                                plt.close(fig_conv)
+                        
+                        # Gráfica del sistema
+                        if mostrar_graficas and n_dim in [2, 3]:
+                            st.write("**Visualización Geométrica (Gauss-Seidel):**")
+                            fig_seidel = graficar_sistema_lineal(
+                                A_np, b_np, sol_seidel, 
+                                f"Gauss-Seidel ({iter_seidel} iteraciones)", n_dim
+                            )
+                            st.pyplot(fig_seidel)
+                            plt.close(fig_seidel)
+                    
+                    # === COMPARATIVA ===
+                    if metodo_sistema == "Ambos (comparativa)" and len(resultados) > 1:
+                        st.write("### 📊 Comparativa de Métodos")
+                        fig_comp = graficar_comparativa_sistemas(resultados)
+                        if fig_comp:
+                            st.pyplot(fig_comp)
+                            plt.close(fig_comp)
+                        
+                        # Tabla comparativa
+                        st.write("**Tabla Comparativa:**")
+                        comp_df = pd.DataFrame({
+                            'Método': list(resultados.keys()),
+                            'Iteraciones': [r['iteraciones'] for r in resultados.values()],
+                            'Solución': [r['solucion'] for r in resultados.values()]
+                        })
+                        st.dataframe(comp_df, use_container_width=True)
                             
                 except Exception as e:
                     st.error(f"❌ **Error al resolver el sistema:** {str(e)}")
         else:
             st.info("Configure su matriz y presione 'Resolver Sistema' para observar los cálculos.")
-
-
+    
 # =========================================================
 # PESTAÑA 3: INTERPOLACIÓN E INTEGRACIÓN
 # =========================================================
@@ -291,17 +433,76 @@ with tab3:
                             st.write("### Tabla de Diferencias Divididas:")
                             st.dataframe(pd.DataFrame(fdd), use_container_width=True)
                             
+                            # Mostrar gráficas
+                            if mostrar_graficas:
+                                st.write("### 📊 Visualización de la Interpolación")
+                                
+                                # Crear función polinomial para cada grado
+                                def crear_polinomio_newton(orden):
+                                    def eval_poly(x):
+                                        xterm = 1.0
+                                        result = fdd[0, 0]
+                                        for i in range(1, orden + 1):
+                                            xterm *= (x - x_arr[i-1])
+                                            result += fdd[0, i] * xterm
+                                        return result
+                                    return eval_poly
+                                
+                                # Graficar todos los grados
+                                fig, ax = plt.subplots(figsize=(10, 6))
+                                ax.scatter(x_arr, y_arr, color='red', s=100, label='Datos', zorder=5)
+                                
+                                x_plot = np.linspace(min(x_arr)-0.5, max(x_arr)+0.5, 200)
+                                colors = plt.cm.viridis(np.linspace(0, 1, len(x_arr)))
+                                
+                                for i in range(1, len(x_arr)):
+                                    poly = crear_polinomio_newton(i)
+                                    ax.plot(x_plot, poly(x_plot), '--', color=colors[i], 
+                                           linewidth=1.5, label=f'Grado {i}')
+                                
+                                ax.set_title('Comparativa de Polinomios de Newton por Grado', 
+                                            fontsize=14, fontweight='bold')
+                                ax.set_xlabel('x', fontsize=12)
+                                ax.set_ylabel('y', fontsize=12)
+                                ax.grid(True, alpha=0.3)
+                                ax.legend(loc='best')
+                                
+                                st.pyplot(fig)
+                                plt.close(fig)
+                            
                         elif metodo_interp == "Lagrange":
                             y_final = interpolacion_lagrange(x_arr, y_arr, xi_val)
                             
                             st.success("✅ **Interpolación finalizada**")
                             st.metric(label=f"Valor aproximado f({xi_val})", value=f"{y_final:.6f}")
                             
+                            # Gráfica de interpolación de Lagrange
+                            if mostrar_graficas:
+                                st.write("### 📊 Visualización de la Interpolación")
+                                
+                                def polinomio_lagrange(x):
+                                    resultado = 0
+                                    n = len(x_arr)
+                                    for i in range(n):
+                                        L = 1
+                                        for j in range(n):
+                                            if i != j:
+                                                L *= (x - x_arr[j]) / (x_arr[i] - x_arr[j])
+                                        resultado += y_arr[i] * L
+                                    return resultado
+                                
+                                fig = graficar_interpolacion(
+                                    x_arr, y_arr, polinomio_lagrange, 
+                                    len(x_arr)-1, titulo="Interpolación de Lagrange"
+                                )
+                                st.pyplot(fig)
+                                plt.close(fig)
+                            
                 except Exception as e:
                     st.error(f"❌ **Error en los datos de entrada:** {str(e)}")
             else:
                 st.info("Ingrese los puntos coordenados y ejecute el cálculo.")
-                
+
     # ---------------------------------------------------------
     # SUB-PESTAÑA B: INTEGRACIÓN
     # ---------------------------------------------------------
@@ -347,6 +548,15 @@ with tab3:
                     st.success("✅ **Integración calculada exitosamente**")
                     st.metric(label="Área aproximada (Integral)", value=f"{resultado:.8f}")
                     st.caption(f"Tamaño de paso utilizado ($h$): {h_paso:.6f}")
+
+                    if mostrar_graficas:
+                        st.write("### 📊 Visualización del Área Bajo la Curva")
+                        fig = graficar_integracion(
+                            f_int, lim_a, lim_b, int(num_segmentos), 
+                            metodo_integrar, resultado
+                        )
+                        st.pyplot(fig)
+                        plt.close(fig)
                     
                 except Exception as e:
                     st.error(f"❌ **Error al integrar la función:** {str(e)}")
