@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+import plotly.express as px
 
 # Importación de los módulos desarrollados por tu equipo
 from core.raices import metodo_Newton, metodo_biseccion, metodo_secante
@@ -162,8 +163,7 @@ with tab1:
                         errores = [d['error'] for d in historial[1:]]
                         iteraciones = list(range(2, len(historial) + 1))
                         fig_error = graficar_comparacion_errores(errores, iteraciones, metodo, "Evolución del Error")
-                        st.pyplot(fig_error)
-                        plt.close(fig_error)
+                        st.plotly_chart(fig_error, use_container_width=True)
                     
                     
                     if mostrar_graficas:
@@ -185,14 +185,14 @@ with tab1:
                             )
                         else:
                             # Newton o Secante
-                            dominio = (min(param_a, param_b, raiz) - 1, max(param_a, param_b, raiz) + 1)
+                            margen = max(abs(raiz) * 0.5 + 1, 2.0)
+                            dominio = (raiz - margen, raiz + margen)
                             fig = graficar_newton_secante(
                                 f_grafica, dominio, iterados_puntos, 
                                 raiz, metodo.replace("-Raphson", ""), global_tol, global_max_iter
                             )
                         
-                        st.pyplot(fig)
-                        plt.close(fig)
+                        st.plotly_chart(fig, use_container_width=True)
             else:
                 st.error(f"**Error en la ejecución:** {mensaje}")
         else:
@@ -282,8 +282,7 @@ with tab2:
                                     A_np, b_np, sol_gauss, 
                                     f"Gauss con Pivoteo", n_dim
                                 )
-                                st.pyplot(fig_gauss)
-                                plt.close(fig_gauss)
+                                st.plotly_chart(fig_gauss, use_container_width=True)
                             
                             if tipo_visualizacion in ["Mapa de calor", "Ambas"] and n_dim >= 3:
                                 st.write("**Mapa de calor de la Matriz:**")
@@ -291,8 +290,7 @@ with tab2:
                                     A_np, b_np, sol_gauss, 
                                     f"Gauss con Pivoteo (Heatmap)", n_dim
                                 )
-                                st.pyplot(fig_heat)
-                                plt.close(fig_heat)
+                                st.plotly_chart(fig_heat, use_container_width=True)
                     
                     # === GAUSS-SEIDEL ===
                     if metodo_sistema in ["Gauss-Seidel", "Ambos (comparativa)"]:
@@ -346,8 +344,7 @@ with tab2:
                             st.write("**📈 Evolución de las variables:**")
                             fig_conv = graficar_convergencia_seidel(historial_seidel, "Gauss-Seidel")
                             if fig_conv:
-                                st.pyplot(fig_conv)
-                                plt.close(fig_conv)
+                                st.plotly_chart(fig_conv, use_container_width=True)
                         
                         # Gráfica del sistema
                         if mostrar_graficas and n_dim in [2, 3]:
@@ -356,16 +353,14 @@ with tab2:
                                 A_np, b_np, sol_seidel, 
                                 f"Gauss-Seidel ({iter_seidel} iteraciones)", n_dim
                             )
-                            st.pyplot(fig_seidel)
-                            plt.close(fig_seidel)
+                            st.plotly_chart(fig_seidel, use_container_width=True)
                     
                     # === COMPARATIVA ===
                     if metodo_sistema == "Ambos (comparativa)" and len(resultados) > 1:
                         st.write("### 📊 Comparativa de Métodos")
                         fig_comp = graficar_comparativa_sistemas(resultados)
                         if fig_comp:
-                            st.pyplot(fig_comp)
-                            plt.close(fig_comp)
+                            st.plotly_chart(fig_comp, use_container_width=True)
                         
                         # Tabla comparativa
                         st.write("**Tabla Comparativa:**")
@@ -437,7 +432,6 @@ with tab3:
                             if mostrar_graficas:
                                 st.write("### 📊 Visualización de la Interpolación")
                                 
-                                # Crear función polinomial para cada grado
                                 def crear_polinomio_newton(orden):
                                     def eval_poly(x):
                                         xterm = 1.0
@@ -448,27 +442,53 @@ with tab3:
                                         return result
                                     return eval_poly
                                 
-                                # Graficar todos los grados
-                                fig, ax = plt.subplots(figsize=(10, 6))
-                                ax.scatter(x_arr, y_arr, color='red', s=100, label='Datos', zorder=5)
+                                # Crear figura con Plotly
+                                fig = go.Figure()
                                 
+                                # Puntos de datos
+                                fig.add_trace(go.Scatter(
+                                    x=x_arr,
+                                    y=y_arr,
+                                    mode='markers',
+                                    name='Datos',
+                                    marker=dict(size=12, color='red', symbol='circle', line=dict(width=2, color='black'))
+                                ))
+                                
+                                # Polinomios de diferentes grados
                                 x_plot = np.linspace(min(x_arr)-0.5, max(x_arr)+0.5, 200)
-                                colors = plt.cm.viridis(np.linspace(0, 1, len(x_arr)))
+                                colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA94D', '#A29BFE', '#F368E0']
                                 
                                 for i in range(1, len(x_arr)):
                                     poly = crear_polinomio_newton(i)
-                                    ax.plot(x_plot, poly(x_plot), '--', color=colors[i], 
-                                           linewidth=1.5, label=f'Grado {i}')
+                                    y_plot = poly(x_plot)
+                                    
+                                    fig.add_trace(go.Scatter(
+                                        x=x_plot,
+                                        y=y_plot,
+                                        mode='lines',
+                                        name=f'Grado {i}',
+                                        line=dict(color=colors[i % len(colors)], width=2, dash='dash')
+                                    ))
                                 
-                                ax.set_title('Comparativa de Polinomios de Newton por Grado', 
-                                            fontsize=14, fontweight='bold')
-                                ax.set_xlabel('x', fontsize=12)
-                                ax.set_ylabel('y', fontsize=12)
-                                ax.grid(True, alpha=0.3)
-                                ax.legend(loc='best')
+                                # Configurar layout
+                                fig.update_layout(
+                                    title='Comparativa de Polinomios de Newton por Grado',
+                                    xaxis_title='x',
+                                    yaxis_title='y',
+                                    hovermode='x unified',
+                                    template='plotly_white',
+                                    width=900,
+                                    height=600,
+                                    legend=dict(
+                                        yanchor="top",
+                                        y=0.99,
+                                        xanchor="left",
+                                        x=0.01,
+                                        bgcolor='rgba(255,255,255,0.8)'
+                                    )
+                                )
                                 
-                                st.pyplot(fig)
-                                plt.close(fig)
+                                st.plotly_chart(fig, use_container_width=True)
                             
                         elif metodo_interp == "Lagrange":
                             y_final = interpolacion_lagrange(x_arr, y_arr, xi_val)
@@ -495,8 +515,7 @@ with tab3:
                                     x_arr, y_arr, polinomio_lagrange, 
                                     len(x_arr)-1, titulo="Interpolación de Lagrange"
                                 )
-                                st.pyplot(fig)
-                                plt.close(fig)
+                                st.plotly_chart(fig, use_container_width=True)
                             
                 except Exception as e:
                     st.error(f"❌ **Error en los datos de entrada:** {str(e)}")
@@ -555,8 +574,7 @@ with tab3:
                             f_int, lim_a, lim_b, int(num_segmentos), 
                             metodo_integrar, resultado
                         )
-                        st.pyplot(fig)
-                        plt.close(fig)
+                        st.plotly_chart(fig, use_container_width=True)
                     
                 except Exception as e:
                     st.error(f"❌ **Error al integrar la función:** {str(e)}")
